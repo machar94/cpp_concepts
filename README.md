@@ -2,4 +2,4 @@
 Collection of C++ concepts
 
 Topics:
-- [ ] [SFINAE](src/templates/README.md)
+- [x] [SFINAE](src/templates/README.md)
