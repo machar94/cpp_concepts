@@ -8,22 +8,22 @@ Overload resolution is the name of the process by which the compiler chooses the
 best function out of the set of available overloaded functions based on the
 argument types provided.
 
-If there are function templates also available (templates with the same name),
-then overload resolution will also consider them. It however, prefers non
-templated functions over template specialization. If during the overload
-resolution process, if the compiler tries to substitute the type of the input
-arguments to the template and it fails, the compiler just moves on and tests the
-next function. If the function that failed is a template, then this process of
-moving on to the next one is because substitution failure is not an error
-(SFINAE).
+If there are function templates also available (templates with the same funciton
+name), then overload resolution will also consider them. It however, prefers non
+templated functions over templated ones. If during the overload resolution
+process, the compiler tries to substitute the type in a template and fails, the
+compiler just moves on and tests the next function. If the function that failed
+is a template, then this process of moving on to the next one is because
+substitution failure is not an error (SFINAE).
 
 ## Example 1
 
 This is just an example of function overloading. There are two `foo` functions
-to choose from. If `foo(int n)` is commented out, then the line `foo(1)` will
-perform an implicit conversion with no loss of percision. There are no compiler
-errors. If `foo(int n)` is available, then for `foo(1)` the compiler chooses it
-since the function prototype is an exact match. There is no SFINAE here. 
+to choose from. If `foo(int n)` is commented out, the compiler will perform an
+implicit conversion on 1 with no loss of precision and call `foo(double n)`.
+There are no compiler errors. If `foo(int n)` is available, then for `foo(1)`
+the compiler chooses it since the function prototype is an exact match. There is
+no SFINAE here. 
 
 ```
 #include <iostream>
@@ -66,21 +66,15 @@ typename Iter::value_type sum(Iter b, Iter e, typename Iter::value_type acc)
 }
 ```
 
-In the below code, evaluating the first sum call succeeds... The iterators of a
+In the below code, evaluating the first sum call succeeds... the iterators of a
 vector have `::value_type` defined, but it isn't defined for `int*` which is why
 the second call to sum fails. Yes, this is an error, but it is an error because
-there were no other overloaded functions to match to.
+there were no other overloaded functions to match with.
 
 ```
 int main()
     std::vector<int> a{1, 2, 3, 4};
     auto res0 = sum(a.begin(), a.end(), 0);
-
-    // error: no matching function for call to ‘sum(int*, int*, int)’
-    // template argument deduction/substitution failed:
-    // one could say that substitution failure is an error in this case
-    // but it's just because no other viable function was found
-    // It valued to substitue int* because int* doesnt have a type member value::type
     auto res1 = sum(a.data(), a.data() + 4, 0);
 }
 ```
@@ -92,11 +86,10 @@ error: no matching function for call to ‘sum(int*, int*, int)’
     template argument deduction/substitution failed:
 ```
 
-If we now add the implementation this overload of sum below then everything
-works. Now in the above code, both calls to sum succeed. Specifically in the
-case of the second call, the compiler will try and substitute `Iter` as `int*`
-and fail, but will then move on to the next template which expects a pointer and
-will succeed (SFINAE).
+If we now add this overload of sum below then everything works. Now in the above
+code, both calls to sum succeed. Specifically in the case of the second call,
+the compiler will try and substitute `Iter` as `int*` and fail, but will then
+move on to the next template which expects a pointer and will succeed (SFINAE).
 
 ```
 template <typename T>
@@ -144,10 +137,10 @@ sum(int* b, int* e, int acc)
 sum(T* b, T* e, Tacc)
 ```
 
-When we run the below code:
+When we run the code:
 * Call 1 will fail twice on option T* because it is not a pointer and on option
   int* because the compiler won't convert an interator to an int*
 * Call 2 will fail once on the template expecting type `Iter` as specified
-  previously but will succeed on sum calls two and three. Note the output of running the code actually shows the int* implementation was called because the compiler was able to (and prefers) matching with a non templated overloaded function over a templated option.
-* Call 3 will fail twice, but succeeds on the T* option of sum since it the
+  previously but will succeed on sum calls two and three. Note the output of running the code actually shows the int* implementation was called because the compiler was able to (and prefers) matching with a non templated function over a templated option.
+* Call 3 will fail twice, but succeeds on the T* option of sum since the
   compiler can substite T for double and then match the call exactly. 
