@@ -16,6 +16,12 @@ compiler just moves on and tests the next function. If the function that failed
 is a template, then this process of moving on to the next one is because
 substitution failure is not an error (SFINAE).
 
+**Takeaways** 
+
+The compiler will try to match against all available function/class templates
+and not error out if a substitution fails.
+
+
 ## Example 1
 
 This is just an example of function overloading. There are two `foo` functions

@@ -2,4 +2,7 @@
 Collection of C++ concepts
 
 Topics:
-- [x] [SFINAE](src/templates/README.md)
+    Templates:
+        - [x] [SFINAE](src/templates/README.md)
+    Threading:
+        - [ ] Async, Future, and Promise
