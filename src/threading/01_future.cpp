@@ -1,71 +1,70 @@
-#include <atomic>
+#include <algorithm>
 #include <future>
 #include <iostream>
 #include <random>
-#include <thread>
+#include <set>
 
-void work(int i) {
-  std::mt19937 rng;
-  rng.seed(std::random_device()());
-  std::uniform_int_distribution<unsigned int> rnd(333, 777);
-  // simulate heavy work...
-  auto slept_for = std::chrono::milliseconds(rnd(rng));
-  std::this_thread::sleep_for(slept_for);
-  std::cout << "Future " << i << " slept for "
-            << std::to_string(slept_for.count()) << std::endl;
+// Debug
+// /usr/bin/time ./install/threading/02_future
+// 0.96user 0.01system 0:00.98elapsed 99%CPU (0avgtext+0avgdata
+// 33088maxresident)k 0inputs+0outputs (0major+7540minor)pagefaults 0swaps
+
+// Release
+// /usr/bin/time ./install/threading/02_future
+// 0.49user 0.01system 0:00.50elapsed 99%CPU (0avgtext+0avgdata
+// 33004maxresident)k 0inputs+0outputs (0major+7552minor)pagefaults 0swaps
+
+// Debug (two threads)
+// 2.96user 0.03system 0:02.05elapsed 145%CPU (0avgtext+0avgdata
+// 92744maxresident)k 0inputs+0outputs (0major+22389minor)pagefaults 0swaps
+
+std::set<int> make_sorted_random(const size_t num_elems) {
+  std::set<int> retval;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dis(0, num_elems - 1);
+
+  // inserter is a convenience function that generates a std::insert_iterator
+  // which takes (1) container and (2) the location to insert. generate_n
+  // takes an insert_iterator and a lambda
+  std::generate_n(std::inserter(retval, retval.end()), num_elems,
+                  [&]() { return dis(gen); });
+
+  // throw std::runtime_error("runtime error!");
+
+  return retval;
 }
+
 int main() {
-  std::cout << "Main thread ID: " << std::this_thread::get_id() << std::endl;
 
-  // (1) std::launch::async
-  // (2) std::launch::deferred
-  // The launch policy
-  // (1) launches a new thread at some point
-  // (2) lazy launches a new thread (only starts thread when get is called)
+    // Ex. 1 No threading example
+    // 1.87user 0.02system 0:01.90elapsed 99%CPU (0avgtext+0avgdata 62596maxresident)k
+    // 0inputs+0outputs (0major+14940minor)pagefaults 0swaps
+    // std::cout << make_sorted_random(1000000).size() << ", " << make_sorted_random(1000000).size() << std::endl;
 
-  // Type: std::future<void>
-  auto f1 = std::async(std::launch::async, work, 1);
-  auto f2 = std::async(std::launch::async, work, 2);
+    // Ex. 2 Async - std::launch::async | std::launch::deferred
+    // 2.09user 0.03system 0:01.14elapsed 185%CPU (0avgtext+0avgdata 62984maxresident)k
+    // 0inputs+0outputs (0major+14962minor)pagefaults 0swaps
+    // auto f1 = std::async(make_sorted_random, 1000000);
+    // auto f2 = std::async(make_sorted_random, 1000000);
+    // std::cout << f1.get().size() << " " << f2.get().size() << "\n";
 
-  //   std::atomic<int> ret;
-  //   auto t1 = std::thread([&ret]() {
-  //     std::cout << "Explicit thread ID: " << std::this_thread::get_id()
-  //               << std::endl;
-  //     ret = 1;
-  //   });
+    // 2.12user 0.02system 0:01.19elapsed 180%CPU (0avgtext+0avgdata 62924maxresident)k
+    // 0inputs+0outputs (0major+14958minor)pagefaults 0swaps
+    // auto f1 = std::async(std::launch::async, make_sorted_random, 1000000);
+    // auto f2 = std::async(std::launch::async, make_sorted_random, 1000000);
+    // std::cout << f1.get().size() << " " << f2.get().size() << "\n";
 
-  std::cout << "Calling f1.get()" << std::endl;
-  f1.get();
-  std::cout << "Calling f2.get()" << std::endl;
-  f2.get();
+    // 1.95user 0.01system 0:01.96elapsed 99%CPU (0avgtext+0avgdata 62952maxresident)k
+    // 0inputs+0outputs (0major+14955minor)pagefaults 0swaps
+    // auto f1 = std::async(std::launch::deferred, make_sorted_random, 1000000);
+    // auto f2 = std::async(std::launch::deferred, make_sorted_random, 1000000);
+    // std::cout << f1.get().size() << " " << f2.get().size() << "\n";
 
-  // t1.join();
-  // std::cout << "Return value from explicit thread: " << ret << std::endl;
+    // 
+    // try {
+    //   f1.get();
+    // } catch (const std::exception &e) {
+    //   std::cout << "f1 threw exception: " << e.what() << "\n";
+    // }
 }
-
-// The future async example reminds me of thread and join. Except you needed to
-// explicitly pass in the variable by reference that you wanted to update.
-//  Important, once you calll get(), you cannot grab a value from it again()!
-
-// Get is blocking, meaning that the code above doesn't work
-// If it's a thread that's supposed to end before the program then maybe async
-// is better than thread.
-
-// get, waits for the task to finish and get the value. It is blocking but if
-// the other threads have already spawned and in particular other asyncs with
-// the async launch policy, then they will still continue to do work.
-// wait_for
-// valid: is false after a .get() 
-// wait_until 
-// future_status::ready 
-// async essentially a thread but you know that it will return before the program ends. Returns a future
-// future holds the value of something returning from an async call. Future values don't hold a real value until the async function ends.
-// promise
-
-// Takeaway from Jason Turner
-// Really easy way to start getting parallelization benefits if you stick with
-// copys of data and no globals (that way no locking is required)
-
-// default value of async is async | deferred, meaning the computer can decide
-// if it wants to launch the task in a new thread or run it synchronously when
-// get is called
