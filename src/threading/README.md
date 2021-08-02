@@ -106,3 +106,6 @@ try {
 }
 ```
 
+### Note
+
+The future/get combo is pretty similar in usage to thread/join.
