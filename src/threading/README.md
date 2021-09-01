@@ -5,6 +5,7 @@
 * Async/Future
 * Promise
 * Thread pools
+* Packaged Tasks
 
 Concepts about Async, Future, and Promise are modern ways (C++11) of using
 concurrency.
